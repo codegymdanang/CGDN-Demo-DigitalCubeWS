@@ -1,15 +1,19 @@
 package smartdev.vn.webservice.service;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import smartdev.vn.webservice.entity.User;
+import smartdev.vn.webservice.repository.RoleRepository;
 import smartdev.vn.webservice.repository.UserRepository;
 
 /*
@@ -30,6 +34,9 @@ public class JwtUserDetailsService implements UserDetailsService {
     private UserRepository userRepository;
 
     @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
     private PasswordEncoder bcryptEncoder;
 
     @Override
@@ -38,8 +45,23 @@ public class JwtUserDetailsService implements UserDetailsService {
         if (user == null) {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }
-        return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(),
-                new ArrayList<>());
+       // return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(),
+        //        new ArrayList<>());
+        // [ROLE_USER, ROLE_ADMIN,..]
+        List<String> roleNames = this.roleRepository.getRoleNames(user.getUserName());
+
+        List<GrantedAuthority> grantList = new ArrayList<GrantedAuthority>();
+        if (roleNames != null) {
+            for (String role : roleNames) {
+                // ROLE_USER, ROLE_ADMIN,..
+                GrantedAuthority authority = new SimpleGrantedAuthority(role);
+                grantList.add(authority);
+            }
+        }
+
+        UserDetails userDetails = (UserDetails) new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), grantList);
+
+        return userDetails;
     }
 
     public User save(User user) {
